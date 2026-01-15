@@ -1,0 +1,166 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fútbol Trivial: El Campeonato</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Barlow+Condensed:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-green: #22c55e;
+            --deep-dark: #020617;
+            --hazard-red: #ef4444;
+        }
+
+        body {
+            font-family: 'Barlow Condensed', sans-serif;
+            background-color: var(--deep-dark);
+            color: #f8fafc;
+            margin: 0;
+            overflow-x: hidden;
+            overflow-y: auto;
+            text-transform: uppercase;
+        }
+
+        h1, h2, h3, .font-tech {
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: -0.05em;
+        }
+        
+        /* Noise Texture Overlay */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.07;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        /* Tactical Pitch Grid */
+        .stadium-bg {
+            background: 
+                linear-gradient(rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.8)),
+                repeating-linear-gradient(45deg, rgba(34, 197, 94, 0.02) 0px, rgba(34, 197, 94, 0.02) 1px, transparent 1px, transparent 10px),
+                repeating-linear-gradient(-45deg, rgba(34, 197, 94, 0.02) 0px, rgba(34, 197, 94, 0.02) 1px, transparent 1px, transparent 10px),
+                radial-gradient(circle at 50% 50%, #064e3b 0%, #020617 100%);
+            background-attachment: fixed;
+        }
+
+        .pitch-gradient {
+            background: radial-gradient(circle at center, #065f46 0%, #020617 100%);
+        }
+
+        .skew-box {
+            transform: skewX(-15deg);
+        }
+        .skew-box-inner {
+            transform: skewX(15deg);
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        .scanline {
+            width: 100%;
+            height: 2px;
+            background: rgba(34, 197, 94, 0.3);
+            position: fixed;
+            animation: scanline 4s linear infinite;
+            pointer-events: none;
+            z-index: 90;
+            box-shadow: 0 0 10px var(--neon-green);
+        }
+
+        .wrong-shake {
+            animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+            filter: hue-rotate(90deg) saturate(200%);
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translate3d(0, 0, 0); }
+            20%, 60% { transform: translate3d(-10px, 0, 0); }
+            40%, 80% { transform: translate3d(10px, 0, 0); }
+        }
+
+        .glitch-text {
+            text-shadow: 3px 0 #00ff00, -3px 0 #ff00ff;
+            position: relative;
+        }
+
+        .vignette {
+            box-shadow: inset 0 0 15vw rgba(0,0,0,1);
+            pointer-events: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+        }
+
+        /* Industrial Button Style */
+        .btn-hard {
+            border: 4px solid white;
+            box-shadow: 8px 8px 0 rgba(0,0,0,1);
+            transition: all 0.1s;
+        }
+        .btn-hard:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 12px 12px 0 var(--neon-green);
+        }
+        .btn-hard:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0 rgba(0,0,0,1);
+        }
+
+        .tactical-border {
+            border: 2px solid rgba(34, 197, 94, 0.2);
+            position: relative;
+        }
+        .tactical-border::before, .tactical-border::after {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border: 2px solid var(--neon-green);
+        }
+        .tactical-border::before { top: -2px; left: -2px; border-right: 0; border-bottom: 0; }
+        .tactical-border::after { bottom: -2px; right: -2px; border-left: 0; border-top: 0; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #020617;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #22c55e;
+            border: 2px solid #020617;
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.36.0",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
+  }
+}
+</script>
+</head>
+<body class="stadium-bg min-h-screen">
+    <div id="root"></div>
+</body>
+</html>
