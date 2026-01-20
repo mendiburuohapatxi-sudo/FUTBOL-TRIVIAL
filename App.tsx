@@ -6,7 +6,7 @@ import {
   Trophy, RotateCcw, ChevronRight, Info, History, Shield, CheckCircle2, 
   XCircle, Flame, Dribbble, Crosshair, ArrowLeft, Timer, Swords, Star, Zap,
   Activity, Target, AlertTriangle, Coins, Globe, Medal, LayoutGrid, HelpCircle, X,
-  Flag, ClipboardList, User, Monitor
+  Flag, ClipboardList, User, Monitor, BarChart3, Radio
 } from 'lucide-react';
 
 const CATEGORIES: CategorySelection[] = [
@@ -57,8 +57,29 @@ const App: React.FC = () => {
   const [shaking, setShaking] = useState(false);
   const [flash, setFlash] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
+  const [records, setRecords] = useState<Record<string, number>>({});
 
   const askedQuestionsRef = useRef<string[]>([]);
+
+  // Load records from local storage
+  useEffect(() => {
+    const savedRecords = localStorage.getItem('futbol_trivial_records');
+    if (savedRecords) {
+      setRecords(JSON.parse(savedRecords));
+    }
+  }, []);
+
+  const updateRecord = (cat: FootballCategory, goals: number) => {
+    setRecords(prev => {
+      const currentRecord = prev[cat] || 0;
+      if (goals > currentRecord) {
+        const newRecords = { ...prev, [cat]: goals };
+        localStorage.setItem('futbol_trivial_records', JSON.stringify(newRecords));
+        return newRecords;
+      }
+      return prev;
+    });
+  };
 
   const fetchQuestion = useCallback(async (cat: FootballCategory, diff: Difficulty, sub?: SubCategory) => {
     setLoading(true);
@@ -106,6 +127,11 @@ const App: React.FC = () => {
             isGameOver = true;
           }
         }
+        
+        if (isGameOver && prev.category) {
+          updateRecord(prev.category, newGoalsFor);
+        }
+
         return { 
           ...prev, 
           correctInStage: newCorrectInStage, 
@@ -118,11 +144,17 @@ const App: React.FC = () => {
       setTimeout(() => setShaking(false), 400);
       setGameState(prev => {
         const newStrikes = prev.strikes - 1;
+        const isGameOver = newStrikes <= 0;
+        
+        if (isGameOver && prev.category) {
+          updateRecord(prev.category, prev.goalsFor);
+        }
+
         return { 
           ...prev, 
           strikes: newStrikes, 
           goalsAgainst: prev.goalsAgainst + 1,
-          gameOver: newStrikes <= 0 
+          gameOver: isGameOver
         };
       });
     }
@@ -269,52 +301,82 @@ const App: React.FC = () => {
           <div className="z-10 w-full max-w-6xl animate-in zoom-in duration-500 py-12">
             <div className="flex flex-col items-center mb-16">
               <div className="bg-green-500 text-black px-6 py-2 skew-box mb-6 border-b-8 border-green-800">
-                 <span className="skew-box-inner font-black text-2xl italic">ESTADIO VIRTUAL</span>
+                 <span className="skew-box-inner font-black text-2xl italic tracking-tighter">DATA CENTER</span>
               </div>
               <h1 className="text-6xl md:text-[10rem] font-black italic text-white leading-none tracking-tighter drop-shadow-[10px_10px_0_rgba(34,197,94,0.3)] glitch-text">
                 FÚTBOL <span className="text-green-500">TRIVIAL</span>
               </h1>
-              <div className="h-2 w-full max-w-3xl bg-white/10 mt-4 overflow-hidden">
-                <div className="h-full bg-green-500 w-1/3 animate-[move_2s_infinite_linear]"></div>
+              <div className="h-2 w-full max-w-3xl bg-white/5 mt-4 overflow-hidden relative border border-white/10">
+                <div className="absolute inset-0 bg-green-500/10 animate-pulse"></div>
+                <div className="h-full bg-green-500 w-1/3 animate-[move_3s_infinite_linear] shadow-[0_0_20px_#22c55e]"></div>
               </div>
 
-              <button 
-                onClick={() => setShowInstructions(true)}
-                className="mt-10 flex items-center gap-3 bg-white/5 hover:bg-white/10 border-2 border-green-500/20 px-8 py-3 skew-box transition-all text-green-500 font-bold italic tracking-widest text-sm group"
-              >
-                <HelpCircle size={20} className="skew-box-inner group-hover:rotate-12 transition-transform" />
-                <span className="skew-box-inner">MANUAL TÁCTICO (INFO)</span>
-              </button>
+              <div className="flex gap-4 mt-10">
+                <button 
+                  onClick={() => setShowInstructions(true)}
+                  className="flex items-center gap-3 bg-white/5 hover:bg-green-500 hover:text-black border-2 border-green-500 px-8 py-3 skew-box transition-all text-green-500 font-bold italic tracking-widest text-sm group"
+                >
+                  <HelpCircle size={20} className="skew-box-inner group-hover:rotate-12 transition-transform" />
+                  <span className="skew-box-inner">MANUAL TÁCTICO</span>
+                </button>
+                <div className="flex items-center gap-3 bg-black/80 border-2 border-white/20 px-8 py-3 skew-box text-white/40 font-bold italic text-sm">
+                   <Radio size={20} className="skew-box-inner animate-pulse text-green-500" />
+                   <span className="skew-box-inner">CONEXIÓN SATELITAL: OK</span>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => { setSelectedCategory(cat.id); window.scrollTo(0, 0); }}
-                  className="group relative p-8 bg-black/40 border-4 border-white/10 hover:border-green-500 transition-all active:scale-95 text-left skew-box hover:bg-green-500/5 shadow-[10px_10px_0_rgba(0,0,0,0.5)]"
-                >
-                  <div className="skew-box-inner flex flex-col gap-4">
-                    <div className="text-6xl group-hover:scale-125 transition-transform duration-300 drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">{cat.icon}</div>
-                    <div>
-                      <h3 className="font-black text-3xl text-white italic group-hover:text-green-500 transition-colors uppercase leading-none">{cat.name}</h3>
-                      <p className="text-xs text-green-900 font-black tracking-[0.2em] mt-2 group-hover:text-white/50">{cat.description}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {CATEGORIES.map((cat) => {
+                const record = records[cat.id] || 0;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => { setSelectedCategory(cat.id); window.scrollTo(0, 0); }}
+                    className="group relative p-8 bg-black/40 border-4 border-white/10 hover:border-green-500 transition-all active:scale-95 text-left skew-box hover:bg-green-500/5 shadow-[15px_15px_0_rgba(0,0,0,0.8)] overflow-hidden"
+                  >
+                    <div className="absolute top-0 left-0 w-full h-1 bg-green-500/20 group-hover:bg-green-500 transition-colors"></div>
+                    <div className="skew-box-inner flex flex-col gap-4 relative z-10">
+                      <div className="flex justify-between items-start">
+                        <div className="text-6xl group-hover:scale-125 transition-transform duration-300 drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">{cat.icon}</div>
+                        {record > 0 && (
+                          <div className="bg-green-500/10 border border-green-500/30 px-3 py-1 text-[10px] text-green-500 font-black italic tracking-tighter animate-pulse">
+                            RÉCORD: {record} GOLES
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="font-black text-3xl text-white italic group-hover:text-green-500 transition-colors uppercase leading-none tracking-tighter">{cat.name}</h3>
+                        <p className="text-[10px] text-white/40 font-black tracking-[0.2em] mt-3 group-hover:text-white/80 transition-colors">{cat.description}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="absolute top-4 right-4 text-green-500/10 group-hover:text-green-500/40 font-black text-4xl italic transition-colors">0{CATEGORIES.indexOf(cat)+1}</div>
-                </button>
-              ))}
+                    {/* Background Graphic */}
+                    <BarChart3 className="absolute -bottom-4 -right-4 text-white/5 w-32 h-32 group-hover:text-green-500/10 transition-colors duration-700" />
+                    <div className="absolute top-4 right-4 text-green-500/5 group-hover:text-green-500/20 font-black text-6xl italic transition-colors select-none">0{CATEGORIES.indexOf(cat)+1}</div>
+                  </button>
+                );
+              })}
             </div>
             
-            <div className="mt-20 flex flex-col items-center gap-4">
-              <div className="bg-white/5 px-10 py-4 skew-box border border-white/10 shadow-2xl">
-                <div className="skew-box-inner flex items-center gap-3">
-                  <ClipboardList className="text-green-500" size={24} />
+            <div className="mt-20 flex flex-col items-center gap-6">
+              <div className="bg-white/5 p-1 skew-box border border-white/10 shadow-2xl relative">
+                <div className="bg-black/80 px-12 py-6 skew-box-inner flex items-center gap-6 border border-white/5">
+                  <div className="relative">
+                    <ClipboardList className="text-green-500" size={32} />
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
+                  </div>
                   <div className="text-left">
-                    <span className="text-[10px] text-white/30 font-black uppercase tracking-[0.5em] block leading-none mb-1">ARQUITECTO DEL SISTEMA</span>
-                    <span className="text-xl text-white font-black italic uppercase tracking-tighter">DIRECCIÓN TÉCNICA: <span className="text-green-500">PATXI MENDIBURU</span></span>
+                    <span className="text-[10px] text-white/30 font-black uppercase tracking-[0.5em] block leading-none mb-2">ARQUITECTO DEL SISTEMA</span>
+                    <span className="text-2xl text-white font-black italic uppercase tracking-tighter leading-none">
+                      DIRECCIÓN TÉCNICA: <span className="text-green-500 glitch-text">PATXI MENDIBURU</span>
+                    </span>
                   </div>
                 </div>
+              </div>
+              <div className="flex items-center gap-4 opacity-20">
+                <div className="h-[1px] w-20 bg-white"></div>
+                <div className="text-[10px] font-black tracking-[1em] italic">FÚTBOL ANALYTICS V4.0</div>
+                <div className="h-[1px] w-20 bg-white"></div>
               </div>
             </div>
           </div>
@@ -333,9 +395,9 @@ const App: React.FC = () => {
                 <button
                   key={diff.id}
                   onClick={() => initGame(diff.id)}
-                  className="group w-full p-8 bg-black/40 border-4 border-white/10 hover:border-white text-left skew-box transition-all hover:bg-white/5 shadow-[12px_12px_0_rgba(0,0,0,1)]"
+                  className="group w-full p-8 bg-black/40 border-4 border-white/10 hover:border-white text-left skew-box transition-all hover:bg-white/5 shadow-[12px_12px_0_rgba(0,0,0,1)] relative overflow-hidden"
                 >
-                  <div className="skew-box-inner flex items-center justify-between">
+                  <div className="skew-box-inner flex items-center justify-between relative z-10">
                     <div>
                       <h3 className={`font-black text-5xl uppercase italic leading-none ${diff.color}`}>{diff.label}</h3>
                       <p className="text-sm text-white/30 font-black uppercase tracking-[0.3em] mt-3 group-hover:text-white/60">{diff.description}</p>
@@ -344,6 +406,7 @@ const App: React.FC = () => {
                        {[...Array(3)].map((_, i) => <Star key={i} size={32} className={`${i === 0 ? diff.color : 'text-white/10'} group-hover:scale-125 transition-transform`} fill="currentColor" />)}
                     </div>
                   </div>
+                  <div className="absolute top-0 left-0 w-1 h-full bg-current group-hover:w-full transition-all duration-500 opacity-5 pointer-events-none" style={{ color: diff.color.split('-')[1] }}></div>
                 </button>
               ))}
             </div>
@@ -359,18 +422,20 @@ const App: React.FC = () => {
       
       <header className="bg-black border-b-8 border-green-500 z-50 shadow-[0_15px_50px_rgba(0,0,0,1)] sticky top-0">
         {!gameState.gameOver && (
-          <div className="w-full bg-black/40 h-8 md:h-10 overflow-hidden relative border-b-4 border-green-500/30 group">
+          <div className="w-full bg-black/60 h-10 md:h-14 overflow-hidden relative border-b-4 border-green-500/30 group">
              <div 
-               className="h-full bg-green-500 shadow-[0_0_30px_#22c55e] transition-all duration-700 ease-out"
+               className="h-full bg-green-500 shadow-[0_0_40px_#22c55e] transition-all duration-700 ease-out"
                style={{ width: `${goalProgressPercent}%` }}
              />
-             <div className="absolute inset-0 flex items-center justify-center gap-4">
-                <Target size={20} className="text-white animate-pulse" />
-                <span className="text-sm md:text-lg font-black text-white tracking-[0.3em] uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,1)] italic">
-                   PROGRESO PARA EL PRÓXIMO GOL: <span className="text-green-300">{gameState.correctInStage}</span> / 5
+             <div className="absolute inset-0 flex items-center justify-center gap-6">
+                <Target size={24} className="text-white animate-spin-slow" />
+                <span className="text-lg md:text-2xl font-black text-white tracking-[0.4em] uppercase drop-shadow-[0_2px_10px_rgba(0,0,0,1)] italic">
+                   BATERÍA DE GOL: <span className="text-green-300 text-4xl">{gameState.correctInStage}</span> <span className="text-white/30">/</span> 5
                 </span>
-                <div className="hidden md:block h-1 w-20 bg-white/20 rounded-full overflow-hidden">
-                   <div className="h-full bg-white animate-[move_1s_infinite_linear]" style={{ width: '30%' }}></div>
+                <div className="hidden md:flex gap-1">
+                   {[...Array(5)].map((_, i) => (
+                     <div key={i} className={`h-2 w-8 skew-box ${i < gameState.correctInStage ? 'bg-white shadow-[0_0_10px_white]' : 'bg-white/10'}`} />
+                   ))}
                 </div>
              </div>
           </div>
@@ -378,22 +443,22 @@ const App: React.FC = () => {
 
         <div className="p-4 md:p-6 flex justify-between items-center">
           <div className="flex items-center gap-6 md:gap-10">
-            <button onClick={restart} className="text-green-500 hover:text-white transition-all bg-white/5 p-3 md:p-4 skew-box border-4 border-green-500/20 hover:border-green-500">
-              <RotateCcw size={24} className="skew-box-inner" />
+            <button onClick={restart} className="text-green-500 hover:text-white transition-all bg-white/5 p-3 md:p-4 skew-box border-4 border-green-500/20 hover:border-green-500 group">
+              <RotateCcw size={24} className="skew-box-inner group-hover:rotate-180 transition-transform duration-500" />
             </button>
             <div className="flex flex-col">
-              <div className="text-[10px] font-black text-green-500 uppercase tracking-[0.4em] flex items-center gap-2 italic">ESTADO DEL MATCH</div>
+              <div className="text-[10px] font-black text-green-500 uppercase tracking-[0.4em] flex items-center gap-2 italic">MARCADOR TÁCTICO</div>
               <div className="flex items-center gap-4 mt-1">
                 <div className="flex flex-col items-center">
-                  <span className="text-[8px] text-white/40 font-bold mb-1">LOCAL</span>
-                  <div className="bg-green-500 text-black px-4 py-1 skew-box font-black text-3xl italic shadow-lg">
+                  <span className="text-[8px] text-white/40 font-bold mb-1 tracking-widest">USER</span>
+                  <div className="bg-green-500 text-black px-5 py-2 skew-box font-black text-4xl italic shadow-[0_0_20px_rgba(34,197,94,0.4)] relative">
                     <span className="skew-box-inner">{gameState.goalsFor}</span>
                   </div>
                 </div>
-                <div className="text-white/20 font-black text-2xl">-</div>
+                <div className="text-white/20 font-black text-2xl animate-pulse">VS</div>
                 <div className="flex flex-col items-center">
-                  <span className="text-[8px] text-white/40 font-bold mb-1">VISITANTE</span>
-                  <div className="bg-hazard-red text-white px-4 py-1 skew-box font-black text-3xl italic shadow-lg">
+                  <span className="text-[8px] text-white/40 font-bold mb-1 tracking-widest">AI</span>
+                  <div className="bg-hazard-red text-white px-5 py-2 skew-box font-black text-4xl italic shadow-[0_0_20px_rgba(239,68,68,0.4)]">
                     <span className="skew-box-inner">{gameState.goalsAgainst}</span>
                   </div>
                 </div>
@@ -402,12 +467,12 @@ const App: React.FC = () => {
           </div>
           
           <div className="hidden lg:flex flex-col items-center">
-            <div className="bg-white text-black px-12 py-2 skew-box border-r-8 border-green-500 shadow-lg">
-              <span className="skew-box-inner font-black uppercase text-2xl italic tracking-tighter">VIVO EN DIRECTO</span>
+            <div className="bg-white text-black px-12 py-2 skew-box border-r-8 border-green-500 shadow-xl">
+              <span className="skew-box-inner font-black uppercase text-2xl italic tracking-tighter">DATA STREAMING</span>
             </div>
             <div className="flex gap-4 mt-2">
-               <div className="text-xs font-black uppercase text-green-500 bg-green-500/10 px-4 py-1 skew-box border border-green-500/30">
-                 <span className="skew-box-inner">RONDA {gameState.questionNumber}</span>
+               <div className="text-xs font-black uppercase text-green-500 bg-green-500/10 px-4 py-1 skew-box border border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.1)]">
+                 <span className="skew-box-inner">JUGADA #{gameState.questionNumber}</span>
                </div>
                <div className="text-xs font-black uppercase text-white/50 bg-white/5 px-4 py-1 skew-box border border-white/10">
                  <span className="skew-box-inner">{gameState.difficulty?.toUpperCase()}</span>
@@ -416,10 +481,10 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex flex-col items-end">
-            <div className="text-[10px] font-black text-green-500 uppercase tracking-[0.4em] mb-2 flex items-center gap-2 italic">VIDAS RESTANTES <Shield size={12} /></div>
+            <div className="text-[10px] font-black text-green-500 uppercase tracking-[0.4em] mb-2 flex items-center gap-2 italic">ENERGÍA RESTANTE <Shield size={12} /></div>
             <div className="flex gap-1.5 md:gap-2">
               {[...Array(gameState.maxStrikes)].map((_, i) => (
-                <div key={i} className={`w-8 md:w-10 h-3 md:h-4 skew-box transition-all duration-500 ${i < gameState.strikes ? 'bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.8)]' : 'bg-red-900/10 border-2 border-red-500/40'}`} />
+                <div key={i} className={`w-8 md:w-12 h-4 md:h-5 skew-box transition-all duration-500 ${i < gameState.strikes ? 'bg-green-500 shadow-[0_0_20px_rgba(34,197,94,1)]' : 'bg-red-900/10 border-2 border-red-500/40'}`} />
               ))}
             </div>
           </div>
@@ -429,62 +494,73 @@ const App: React.FC = () => {
       <main className="flex-1 flex flex-col relative p-6 md:p-12 max-w-7xl mx-auto w-full z-20">
         {gameState.gameOver ? (
           <div className="flex-1 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-700">
-            <div className={`px-10 py-4 skew-box mb-8 border-b-[12px] shadow-2xl ${isVictory ? 'bg-green-600 border-green-900' : 'bg-red-600 border-red-900'}`}>
-               <span className="skew-box-inner font-black text-4xl italic uppercase flex items-center gap-4">
-                  {isVictory ? <Medal size={40} /> : <AlertTriangle size={40} />}
-                  {isVictory ? '¡CAMPEÓN DEL MUNDO!' : 'FINAL DEL PARTIDO'}
+            <div className={`px-12 py-5 skew-box mb-10 border-b-[15px] shadow-[0_30px_60px_rgba(0,0,0,0.8)] ${isVictory ? 'bg-green-600 border-green-900' : 'bg-red-600 border-red-900'}`}>
+               <span className="skew-box-inner font-black text-5xl italic uppercase flex items-center gap-6">
+                  {isVictory ? <Medal size={48} /> : <AlertTriangle size={48} />}
+                  {isVictory ? '¡CAMPEÓN INVICTO!' : 'PARTIDO FINALIZADO'}
                </span>
             </div>
-            <h2 className={`text-7xl md:text-[10rem] font-black italic text-white uppercase mb-10 tracking-tighter leading-none glitch-text text-center ${isVictory ? 'animate-bounce' : ''}`}>
-               {isVictory ? 'VICTORIA' : 'GAME OVER'}
+            <h2 className={`text-8xl md:text-[14rem] font-black italic text-white uppercase mb-12 tracking-tighter leading-none glitch-text text-center ${isVictory ? 'animate-bounce' : ''}`}>
+               {isVictory ? 'VICTORIA' : 'DERROTA'}
             </h2>
-            <div className="bg-black/80 p-12 border-8 border-white/10 skew-box mb-12 shadow-2xl relative">
-              <div className={`absolute top-0 left-0 w-full h-2 ${isVictory ? 'bg-green-500' : 'bg-red-500'}`}></div>
-              <div className="skew-box-inner flex flex-col items-center gap-4 text-center">
-                <span className="text-xs text-white/40 font-black tracking-widest uppercase">RESULTADO FINAL</span>
-                <div className="flex items-center gap-8">
-                   <div className="text-6xl font-black italic text-green-500">{gameState.goalsFor}</div>
-                   <div className="text-3xl font-black text-white/20">VS</div>
-                   <div className="text-6xl font-black italic text-hazard-red">{gameState.goalsAgainst}</div>
+            <div className="bg-black/90 p-14 border-8 border-white/10 skew-box mb-16 shadow-[0_0_100px_rgba(0,0,0,1)] relative overflow-hidden">
+              <div className="absolute inset-0 bg-green-500/5 pointer-events-none"></div>
+              <div className={`absolute top-0 left-0 w-full h-3 ${isVictory ? 'bg-green-500 shadow-[0_5px_15px_#22c55e]' : 'bg-red-500 shadow-[0_5px_15px_#ef4444]'}`}></div>
+              <div className="skew-box-inner flex flex-col items-center gap-6 text-center relative z-10">
+                <span className="text-sm text-white/30 font-black tracking-[0.8em] uppercase">SÍNTESIS DEL ENCUENTRO</span>
+                <div className="flex items-center gap-12">
+                   <div className="flex flex-col items-center">
+                     <span className="text-xs font-bold text-white/20 mb-2 tracking-widest uppercase">LOCAL</span>
+                     <div className="text-9xl font-black italic text-green-500 drop-shadow-[0_0_30px_rgba(34,197,94,0.5)]">{gameState.goalsFor}</div>
+                   </div>
+                   <div className="text-4xl font-black text-white/10 italic">VS</div>
+                   <div className="flex flex-col items-center">
+                     <span className="text-xs font-bold text-white/20 mb-2 tracking-widest uppercase">VISITANTE</span>
+                     <div className="text-9xl font-black italic text-hazard-red drop-shadow-[0_0_30px_rgba(239,68,68,0.5)]">{gameState.goalsAgainst}</div>
+                   </div>
                 </div>
-                {isVictory && <div className="mt-4 text-green-500 font-black italic tracking-widest text-xl">¡DOMINIO ABSOLUTO DEL CAMPO!</div>}
+                {isVictory ? (
+                  <div className="mt-6 text-green-500 font-black italic tracking-widest text-2xl animate-pulse">¡RECONOCIDO COMO LEYENDA DEL ESTADIO!</div>
+                ) : (
+                  <div className="mt-6 text-hazard-red font-black italic tracking-widest text-2xl uppercase opacity-60">Falta de táctica en el mediocampo.</div>
+                )}
               </div>
             </div>
-            <button onClick={restart} className="btn-hard px-20 py-8 bg-green-500 text-black font-black uppercase italic text-3xl transition-all active:scale-95">
-               NUEVO CAMPEONATO
+            <button onClick={restart} className="btn-hard px-24 py-10 bg-green-500 text-black font-black uppercase italic text-4xl transition-all active:scale-95 shadow-[0_0_40px_rgba(34,197,94,0.3)]">
+               RE-INICIAR TEMPORADA
             </button>
           </div>
         ) : (
           <div className="flex-1 flex flex-col justify-center gap-12 py-12">
             {loading ? (
-              <div className="text-center flex flex-col items-center gap-8">
+              <div className="text-center flex flex-col items-center gap-10">
                 <div className="relative">
-                   <div className="w-32 h-32 border-[12px] border-green-500/10 border-t-green-500 rounded-full animate-spin" />
-                   <Target size={40} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-green-500 animate-pulse" />
+                   <div className="w-40 h-40 border-[15px] border-green-500/10 border-t-green-500 rounded-full animate-spin shadow-[0_0_50px_rgba(34,197,94,0.2)]" />
+                   <Target size={56} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-green-500 animate-pulse" />
                 </div>
-                <div className="space-y-2">
-                  <p className="text-2xl text-green-500 font-black uppercase tracking-[0.8em] animate-pulse">GENERANDO DESAFÍO</p>
-                  <p className="text-[10px] text-white/20 font-black uppercase tracking-widest">DIRECCIÓN TÉCNICA: PATXI MENDIBURU</p>
+                <div className="space-y-4">
+                  <p className="text-3xl text-green-500 font-black uppercase tracking-[1em] animate-pulse italic">DECODIFICANDO JUGADA</p>
+                  <p className="text-xs text-white/20 font-black uppercase tracking-[0.5em]">DIRECCIÓN TÉCNICA: PATXI MENDIBURU</p>
                 </div>
               </div>
             ) : currentQuestion && (
               <>
                 <div className="relative group">
-                  <div className="absolute -inset-4 bg-green-500/10 blur-3xl group-hover:bg-green-500/20 transition-all duration-1000"></div>
-                  <div className="relative bg-black/90 border-l-[20px] border-green-500 p-10 md:p-14 skew-box shadow-[30px_30px_0_rgba(0,0,0,0.5)] border border-white/5 tactical-border">
-                    <div className="skew-box-inner">
-                      <div className="flex items-center gap-4 mb-6 text-green-500">
-                        <Crosshair size={24} className="animate-spin-slow" /> 
-                        <span className="text-sm font-black uppercase tracking-[0.6em] font-tech italic">ANÁLISIS DE JUGADA</span>
+                  <div className="absolute -inset-6 bg-green-500/10 blur-[60px] group-hover:bg-green-500/20 transition-all duration-1000"></div>
+                  <div className="relative bg-black/90 border-l-[30px] border-green-500 p-12 md:p-16 skew-box shadow-[50px_50px_0_rgba(0,0,0,0.6)] border border-white/5 tactical-border">
+                    <div className="skew-box-inner relative overflow-hidden">
+                      <div className="flex items-center gap-4 mb-8 text-green-500">
+                        <Crosshair size={32} className="animate-spin-slow" /> 
+                        <span className="text-sm font-black uppercase tracking-[0.8em] font-tech italic">OBJETIVO DETECTADO</span>
                       </div>
-                      <h2 className="text-3xl md:text-5xl lg:text-6xl font-black italic uppercase text-white leading-[0.9] tracking-tighter drop-shadow-2xl">
+                      <h2 className="text-4xl md:text-6xl lg:text-7xl font-black italic uppercase text-white leading-[0.85] tracking-tighter drop-shadow-2xl">
                         {currentQuestion.question}
                       </h2>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {currentQuestion.options.map((opt, i) => {
                     const isSelected = selectedAnswer === i;
                     const isCorrect = i === currentQuestion.correctAnswerIndex;
@@ -493,17 +569,17 @@ const App: React.FC = () => {
                         key={i}
                         disabled={selectedAnswer !== null}
                         onClick={() => handleAnswer(i)}
-                        className={`p-6 md:p-8 border-4 transition-all skew-box font-black uppercase italic text-xl md:text-2xl shadow-[8px_8px_0_rgba(0,0,0,1)] ${
-                          selectedAnswer === null ? 'bg-black/60 border-white/10 text-green-500 hover:border-green-400 hover:-translate-y-2 hover:bg-green-500/10' :
-                          isCorrect ? 'bg-green-500 border-white text-black scale-105 z-10 shadow-[20px_20px_60px_rgba(34,197,94,0.4)]' :
+                        className={`p-10 md:p-12 border-4 transition-all skew-box font-black uppercase italic text-2xl md:text-4xl shadow-[10px_10px_0_rgba(0,0,0,1)] relative overflow-hidden ${
+                          selectedAnswer === null ? 'bg-black/60 border-white/10 text-green-500 hover:border-green-400 hover:-translate-y-3 hover:bg-green-500/10' :
+                          isCorrect ? 'bg-green-500 border-white text-black scale-105 z-10 shadow-[20px_20px_80px_rgba(34,197,94,0.6)]' :
                           isSelected ? 'bg-red-600 border-red-400 text-white scale-95 opacity-100' : 'bg-black/40 border-transparent opacity-20 grayscale'
                         }`}
                       >
-                        <span className="skew-box-inner flex justify-between items-center gap-4">
-                          <span className="text-xs opacity-30">#{i+1}</span>
-                          <span className="flex-1 text-right">{opt}</span>
-                          {selectedAnswer !== null && isCorrect && <CheckCircle2 size={32} className="shrink-0" />}
-                          {selectedAnswer !== null && isSelected && !isCorrect && <XCircle size={32} className="shrink-0" />}
+                        <span className="skew-box-inner flex justify-between items-center gap-6">
+                          <span className="text-sm opacity-30 font-tech">OP_{i+1}</span>
+                          <span className="flex-1 text-right leading-none tracking-tight">{opt}</span>
+                          {selectedAnswer !== null && isCorrect && <CheckCircle2 size={40} className="shrink-0" />}
+                          {selectedAnswer !== null && isSelected && !isCorrect && <XCircle size={40} className="shrink-0" />}
                         </span>
                       </button>
                     );
@@ -511,22 +587,23 @@ const App: React.FC = () => {
                 </div>
 
                 {selectedAnswer !== null && (
-                  <div className="animate-in slide-in-from-bottom-12 duration-500 space-y-8">
-                    <div className="bg-black border-4 border-green-500/30 p-8 flex gap-8 items-center skew-box shadow-2xl tactical-border">
-                      <div className="bg-green-500/10 p-5 rounded-full shrink-0 animate-pulse">
-                        <Info className="text-green-500" size={48} />
+                  <div className="animate-in slide-in-from-bottom-16 duration-700 space-y-10">
+                    <div className="bg-black/95 border-l-[15px] border-green-500/50 p-10 flex gap-10 items-center skew-box shadow-[0_30px_100px_rgba(0,0,0,1)] tactical-border">
+                      <div className="bg-green-500/10 p-6 rounded-full shrink-0 animate-pulse border border-green-500/20">
+                        <Info className="text-green-500" size={56} />
                       </div>
-                      <div className="skew-box-inner border-l-2 border-white/10 pl-8">
-                        <span className="text-xs text-green-500 font-black uppercase tracking-[0.5em] mb-2 block italic">INFORME DEL VAR</span>
-                        <p className="text-lg md:text-2xl text-white font-black italic leading-tight tracking-tight uppercase">{currentQuestion.explanation}</p>
+                      <div className="skew-box-inner border-l-2 border-white/10 pl-10">
+                        <span className="text-xs text-green-500 font-black uppercase tracking-[0.8em] mb-3 block italic">ANÁLISIS TÁCTICO DEL VAR</span>
+                        <p className="text-xl md:text-3xl text-white font-black italic leading-none tracking-tighter uppercase max-w-4xl">{currentQuestion.explanation}</p>
                       </div>
                     </div>
                     <button 
                       onClick={nextQuestion} 
-                      className="btn-hard w-full py-6 md:py-8 bg-white text-black font-black uppercase italic skew-box transition-all flex items-center justify-center gap-6 group"
+                      className="btn-hard w-full py-10 md:py-12 bg-white text-black font-black uppercase italic skew-box transition-all flex items-center justify-center gap-8 group hover:bg-green-500"
                     >
-                      <span className="skew-box-inner flex items-center gap-4 text-3xl md:text-4xl">
-                        {selectedAnswer === currentQuestion.correctAnswerIndex ? 'SIGUIENTE JUGADA' : 'RECUPERAR POSESIÓN'} <ChevronRight size={48} className="group-hover:translate-x-4 transition-transform" />
+                      <span className="skew-box-inner flex items-center gap-6 text-4xl md:text-5xl tracking-tighter">
+                        {selectedAnswer === currentQuestion.correctAnswerIndex ? 'LANZAR ATAQUE' : 'RECUPERAR POSESIÓN'} 
+                        <ChevronRight size={64} className="group-hover:translate-x-6 transition-transform" />
                       </span>
                     </button>
                   </div>
@@ -537,19 +614,19 @@ const App: React.FC = () => {
         )}
       </main>
 
-      <footer className="p-4 md:p-6 bg-black border-t-4 border-green-900 flex justify-between items-center z-50 sticky bottom-0">
-         <div className="flex items-center gap-6 text-green-900 border-r-2 border-green-900/20 pr-6 md:pr-10">
-            <Dribbble size={28} className="animate-spin-slow" />
+      <footer className="p-4 md:p-8 bg-black border-t-8 border-green-900 flex justify-between items-center z-50 sticky bottom-0">
+         <div className="flex items-center gap-8 text-green-900 border-r-2 border-green-900/20 pr-10 md:pr-14">
+            <Dribbble size={36} className="animate-spin-slow text-green-700" />
             <div className="flex flex-col">
-              <span className="text-[10px] font-black uppercase tracking-[0.5em] text-green-700">MODO MATCH ACTIVADO</span>
-              <span className="text-[8px] opacity-40 font-bold uppercase tracking-widest">DIFICULTAD: {gameState.difficulty?.toUpperCase()}</span>
+              <span className="text-xs font-black uppercase tracking-[0.6em] text-green-800 leading-none mb-1">DATASTREAM ACTIVE</span>
+              <span className="text-[10px] opacity-40 font-bold uppercase tracking-[0.3em]">SECURE CHANNEL: TRIVIA_CORE_V4</span>
             </div>
          </div>
-         <div className="flex items-center gap-10">
+         <div className="flex items-center gap-14">
             <div className="text-right">
-               <span className="text-[8px] text-green-900 font-black uppercase tracking-[0.4em]">CATEGORÍA</span>
-               <div className="text-lg md:text-xl text-green-500 font-black italic uppercase tracking-tighter">
-                  {gameState.category === 'torneos' ? 'TORNEOS ÉLITE' : (gameState.category?.toUpperCase() || 'IDLE')}
+               <span className="text-[10px] text-green-900 font-black uppercase tracking-[0.5em] block mb-1">ZONA DE OPERACIÓN</span>
+               <div className="text-xl md:text-2xl text-green-500 font-black italic uppercase tracking-tighter leading-none glitch-text">
+                  {gameState.category === 'torneos' ? 'TORNEOS ÉLITE' : (gameState.category?.toUpperCase() || 'STANDBY')}
                </div>
             </div>
          </div>
